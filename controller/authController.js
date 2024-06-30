@@ -1,0 +1,98 @@
+import { BaseController } from "./baseController";
+import CryptoJS from 'crypto-js';
+import { URLSearchParams } from 'url';
+
+export class AuthController extends BaseController {
+    constructor() {
+        super();
+        // tiktok token env variable
+        this.TIKTOK_CLIENT_KEY = process.env.CLIENT_KEY 
+        this.TIKTOK_SERVER_ENDPOINT_REDIRECT = 'localhost:8080/authTiktok'
+        // Add any specific initialization code here
+    }
+
+    // Add specific methods or properties here
+
+    async authenticate(token) {
+        // Implement logic to authenticate a user
+        return token 
+    }
+
+    
+    async logout() {
+        // Implement logic to log out a user
+    }
+
+    async authenticateWithTiktok(req, res) {
+        const CODE_VERIFIER = this.generateRandomString(128)
+        const CODE_CHALLENGE = this.generateCodeChallenge(CODE_VERIFIER)
+        
+        const csrfState = Math.random().toString(36).substring(2);
+        res.cookie('csrfState', csrfState, { maxAge: 60000 });
+        res.cookie('codeVerifier', CODE_VERIFIER, { maxAge: 60000 });
+        const queryParams = new URLSearchParams({
+            client_key: this.CLIENT_KEY,
+            response_type: 'code',
+            scope: 'user.info.basic,video.list', 
+            redirect_uri: this.REDIRECT_URI,
+            state: csrfState,
+            code_challenge: codeChallenge,
+            code_challenge_method: 'S256'
+        });
+        const authorizationUrl = `https://www.tiktok.com/v2/auth/authorize/?${queryParams}`;
+        res.redirect(authorizationUrl);
+    }
+    
+    async handleCallbackTiktok(req, res) {
+        const { code, state } = req.query;
+        const storedState = req.cookies.csrfState;
+        const codeVerifier = req.cookies.codeVerifier;
+
+        if (state !== storedState) {
+            return res.status(400).send('Invalid state parameter');
+        }
+
+        try {
+            const tokenResponse = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    client_key: this.CLIENT_KEY,
+                    client_secret: this.CLIENT_SECRET,
+                    code: code,
+                    grant_type: 'authorization_code',
+                    redirect_uri: this.REDIRECT_URI,
+                    code_verifier: codeVerifier
+                })
+            });
+
+            const tokenData = await tokenResponse.json();
+
+            if (tokenData.data && tokenData.data.access_token) {
+                localStorage.setItem('accessToken', tokenData.data.access_token);
+                res.redirect('/home');
+            } else {
+                res.status(400).send('Failed to obtain access token');
+            }
+        } catch (error) {
+            console.error('Error during token exchange:', error);
+            res.status(500).send('Internal server error');
+        }
+    }
+
+    generateCodeChallenge(codeVerifier) {
+        return CryptoJS.SHA256(codeVerifier).toString(CryptoJS.enc.Hex)
+    }
+
+    generateRandomString(length) {
+        var result = '';
+        var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+        var charactersLength = characters.length;
+        for (var i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * charactersLength));
+        }
+        return result;
+    }
+}
