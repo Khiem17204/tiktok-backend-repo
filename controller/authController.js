@@ -8,7 +8,7 @@ export class AuthController extends BaseController {
         // tiktok token env variable
         this.TIKTOK_CLIENT_KEY = process.env.CLIENT_KEY 
         this.TIKTOK_SERVER_ENDPOINT_REDIRECT = 'localhost:8080/authTiktok'
-        // Add any specific initialization code here
+        this.TIKTOK_CLIENT_SECRET = process.env.CLIENT_SECRET
     }
 
     // Add specific methods or properties here
@@ -36,7 +36,7 @@ export class AuthController extends BaseController {
             scope: 'user.info.basic,video.list', 
             redirect_uri: this.REDIRECT_URI,
             state: csrfState,
-            code_challenge: codeChallenge,
+            code_challenge: CODE_CHALLENGE,
             code_challenge_method: 'S256'
         });
         const authorizationUrl = `https://www.tiktok.com/v2/auth/authorize/?${queryParams}`;
@@ -79,6 +79,35 @@ export class AuthController extends BaseController {
         } catch (error) {
             console.error('Error during token exchange:', error);
             res.status(500).send('Internal server error');
+        }
+    }
+
+    async refreshAccessToken(refreshToken) {
+        try {
+            const response = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    client_key: this.TIKTOK_CLIENT_KEY,
+                    client_secret: this.TIKTOK_CLIENT_KEY,
+                    grant_type: 'refresh_token',
+                    refresh_token: refreshToken
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.data && data.data.access_token) {
+                // Update the stored access token and refresh token
+                return data.data.access_token;
+            } else {
+                throw new Error('Failed to refresh token');
+            }
+        } catch (error) {
+            console.error('Error refreshing token:', error);
+            throw error;
         }
     }
 
