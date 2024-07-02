@@ -6,7 +6,7 @@ Object.filter = (obj, predicate) =>
           .filter( key => predicate(obj[key]) )
           .reduce( (res, key) => (res[key] = obj[key], res), {} );
 
-export class ShoppingBagController extends BaseController {
+export class CartController extends BaseController {
     constructor() {
         this.bag = localStorage.getItem('bag') ? localStorage.getItem('bag') : {};
         this.total = localStorage.getItem('price') ? localStorage.getItem('price') : 0;
@@ -32,14 +32,59 @@ export class ShoppingBagController extends BaseController {
         this.updateLocalStorage()
     }
 
+    async getPaymentMethod(userId, paymentInfo) {
+        if (false /* user has paymentMethod id saved in database */){
+            /* return the payment method id */
+        }
+        else {
+            paymentMethodId = this.createPaymentMethod(paymentInfo)
+            if (paymentInfo.save) {
+                this.savePaymentMethod(paymentMethodId)
+            }
+            return paymentMethodId
+        }
+    }
+
+    async createPaymentMethod(paymentInfo) {
+        // Implement logic to create a payment method for the user
+        try {
+            const paymentMethod = await stripe.createPaymentMethod({
+                type: 'card',
+                card: {
+                    number: paymentInfo.number,
+                    exp_month: paymentInfo.exp_month,
+                    exp_year: paymentInfo.exp_year,
+                    cvc: paymentInfo.cvc,
+                },
+            });
+            return paymentMethod.id;
+        }
+        catch (error) {
+            throw new Error('Error adding payment method to your account');
+        }
+    }
+
+    async savePaymentMethod(id) {
+        // TODO: Implement logic to save the user's payment method
+        return null;
+    }
+
     
     async checkout(res, req) {
         // Implement logic to checkout the shopping bag
         try {
             // charge the user
-            this.total = localStorage.getItem('price');
+
+            const paymentMethodId = this.getPaymentMethod(req.user.id, req.body.paymentInfo);
+
+            const customer = await stripe.customers.create({
+                payment_method: paymentMethodId,
+                email: 'customer@example.com',  // You'd get this from your app
+            });
+
             await stripe.paymentIntents.create({
                 amount: this.total * 100,
+                customer : customer.id,
                 currency: 'usd',
                 payment_method_types: ['card'],
                 description: 'Payment for shopping bag',
@@ -57,6 +102,7 @@ export class ShoppingBagController extends BaseController {
                 description: 'Transfer for KFC order',
               });
 
+            res.status(200).send('Payment successful');
         
         }
         catch (error) {
