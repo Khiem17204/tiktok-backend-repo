@@ -2,13 +2,14 @@ import { BaseController } from "./baseController.js";
 import CryptoJS from 'crypto-js';
 import { URLSearchParams } from 'url';
 import fetch from 'node-fetch';
+import exp from "constants";
 
-export default class AuthController extends BaseController {
+class AuthController extends BaseController {
     constructor() {
         super(); 
     }
 
-    static async authenticateWithTiktok(req, res) {
+    async authenticateWithTiktok(req, res) {
         const CODE_VERIFIER = AuthController.generateRandomString(128)
         const CODE_CHALLENGE = AuthController.generateCodeChallenge(CODE_VERIFIER)
         
@@ -28,7 +29,7 @@ export default class AuthController extends BaseController {
         res.redirect(authorizationUrl);
     }
     
-    static async handleCallbackTiktok(req, res) {
+    async handleCallbackTiktok(req, res) {
         const { code, state } = req.query;
         const storedState = req.cookies.csrfState;
         const codeVerifier = req.cookies.codeVerifier;
@@ -71,7 +72,7 @@ export default class AuthController extends BaseController {
 
     // endpoint to refresh the access token, use middleware to track request if the token is expired and
     // call the endpoint to refresh the token before continue
-    static async refreshAccessToken(req, res) {
+    async refreshAccessToken(req, res) {
         try {
             const response = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
                 method: 'POST',
@@ -116,3 +117,5 @@ export default class AuthController extends BaseController {
         return result;
     }
 }
+
+export default new AuthController();
