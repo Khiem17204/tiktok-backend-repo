@@ -1,9 +1,14 @@
 import express from 'express';
-import AuthController from '../controller/authController';
+import AuthController from '../controller/authController.js';
 
+const authRouter = express.Router();
 
 // Authentication route
-app.post('/auth', AuthController.authenticate);
+authRouter.post('/auth', AuthController.authenticate);
 
 // Logout route
-app.post('/logout', AuthController.logout);
+authRouter.post('/logout', AuthController.logout);
+
+authRouter.get('/tiktokAuth', AuthController.authenticateWithTiktok);
+
+export default authRouter;

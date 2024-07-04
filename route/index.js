@@ -1,10 +1,10 @@
+import authRoute from './authRoute.js';
 import express from 'express';
-import authRoute from './authRoute';
 
-const router = express.Router();
+const mainRouter = express.Router();
 
-router.use('/',authRoute);
+// Authentication route
+mainRouter.use('/', authRoute);
 
 
-// Export the router
-module.exports = router;
+export default mainRouter;

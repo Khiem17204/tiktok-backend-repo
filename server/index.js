@@ -1,8 +1,9 @@
 import express from 'express';
-import fetch from 'node-fetch';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
-import Cryptojs from 'crypto-js';
+import mainRouter from '../route/index.js';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const app = express();
 
@@ -17,8 +18,17 @@ app.use((err, req, res, next) => {
     res.status(500).send('Something broke!');
 });
 
+app.use('/', mainRouter);
+
+
+app.get('/', (req, res)=>{
+    res.send('Hello World');
+    res.status(200);
+    res.end();
+})
+
 // Start the server
-const port = 3000;
+const port = +process.env.PORT || 8080;
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });

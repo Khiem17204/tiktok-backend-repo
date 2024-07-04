@@ -1,40 +1,43 @@
-import { BaseController } from "./baseController";
+import { BaseController } from "./baseController.js";
 import CryptoJS from 'crypto-js';
 import { URLSearchParams } from 'url';
 
-export class AuthController extends BaseController {
+export default class AuthController extends BaseController {
+    #TIKTOK_CLIENT_KEY
+    #TIKTOK_SERVER_ENDPOINT_REDIRECT
+    #TIKTOK_CLIENT_SECRET
     constructor() {
         super();
         // tiktok token env variable
         this.TIKTOK_CLIENT_KEY = process.env.CLIENT_KEY 
-        this.TIKTOK_SERVER_ENDPOINT_REDIRECT = 'localhost:8080/authTiktok'
+        this.TIKTOK_SERVER_ENDPOINT_REDIRECT = process.env.SERVER_ENDPOINT_REDIRECT
         this.TIKTOK_CLIENT_SECRET = process.env.CLIENT_SECRET
     }
 
     // Add specific methods or properties here
 
-    async authenticate(token) {
+    static async authenticate(token) {
         // Implement logic to authenticate a user
         return token 
     }
 
     
-    async logout() {
+    static async logout() {
         // Implement logic to log out a user
     }
 
-    async authenticateWithTiktok(req, res) {
-        const CODE_VERIFIER = this.generateRandomString(128)
-        const CODE_CHALLENGE = this.generateCodeChallenge(CODE_VERIFIER)
+    static async authenticateWithTiktok(req, res) {
+        const CODE_VERIFIER = AuthController.generateRandomString(128)
+        const CODE_CHALLENGE = AuthController.generateCodeChallenge(CODE_VERIFIER)
         
         const csrfState = Math.random().toString(36).substring(2);
         res.cookie('csrfState', csrfState, { maxAge: 60000 });
         res.cookie('codeVerifier', CODE_VERIFIER, { maxAge: 60000 });
         const queryParams = new URLSearchParams({
-            client_key: this.CLIENT_KEY,
+            client_key: this.TIKTOK_CLIENT_KEY,
             response_type: 'code',
             scope: 'user.info.basic,video.list', 
-            redirect_uri: this.REDIRECT_URI,
+            redirect_uri: this.TIKTOK_SERVER_ENDPOINT_REDIRECT,
             state: csrfState,
             code_challenge: CODE_CHALLENGE,
             code_challenge_method: 'S256'
@@ -43,7 +46,7 @@ export class AuthController extends BaseController {
         res.redirect(authorizationUrl);
     }
     
-    async handleCallbackTiktok(req, res) {
+    static async handleCallbackTiktok(req, res) {
         const { code, state } = req.query;
         const storedState = req.cookies.csrfState;
         const codeVerifier = req.cookies.codeVerifier;
@@ -82,7 +85,7 @@ export class AuthController extends BaseController {
         }
     }
 
-    async refreshAccessToken(refreshToken) {
+    static async refreshAccessToken(refreshToken) {
         try {
             const response = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
                 method: 'POST',
@@ -111,11 +114,11 @@ export class AuthController extends BaseController {
         }
     }
 
-    generateCodeChallenge(codeVerifier) {
+    static generateCodeChallenge(codeVerifier) {
         return CryptoJS.SHA256(codeVerifier).toString(CryptoJS.enc.Hex)
     }
 
-    generateRandomString(length) {
+    static generateRandomString(length) {
         var result = '';
         var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
         var charactersLength = characters.length;
